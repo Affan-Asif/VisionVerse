@@ -6,9 +6,10 @@ import numpy as np
 from PIL import Image
 import io
 import base64
+import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Load YOLOv11 model
