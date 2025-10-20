@@ -5,6 +5,10 @@ import numpy as np
 from PIL import Image
 import io
 import base64
+# ✅ Fix for Pytorch 2.6+
+from torch.serialization import add_safe_globals
+from ultralytics.nn.tasks import DetectionModel
+add_safe_globals([DetectionModel])
 
 app = Flask(__name__)
 

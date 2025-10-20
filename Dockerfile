@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files (model will be downloaded at runtime)
 COPY app.py .
+COPY yolo11x.pt .
 COPY templates/ ./templates/
 
 # Expose port
