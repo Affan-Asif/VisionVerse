@@ -13,7 +13,8 @@ add_safe_globals([DetectionModel])
 app = Flask(__name__)
 
 # Load YOLOv11 model
-model = YOLO("yolo11x.pt")
+model = YOLO("yolo11n.pt")
+# MODEL_URL = "https://myserver.com/models/yolo11x.pt"  # change this!
 
 @app.route('/')
 def index():
