@@ -15,4 +15,6 @@ README.md
 *.log
 .vscode
 .idea
+*.pt
+yolo11x.pt
 
