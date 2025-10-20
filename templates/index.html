@@ -188,54 +188,16 @@
     <div class="container">
         <div class="header">
             <h1>🎯 YOLOv11 Object Detection</h1>
-            <p>Live camera detection or upload an image</p>
+            <p>Upload an image to detect objects using advanced AI</p>
         </div>
         
         <div class="content">
-            <div class="mode-selector" style="display: flex; gap: 20px; margin-bottom: 30px; justify-content: center;">
-                <button id="cameraMode" class="mode-btn active" style="padding: 15px 30px; font-size: 1.1em; border: none; border-radius: 50px; cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; transition: all 0.3s ease;">
-                    📹 Live Camera
-                </button>
-                <button id="uploadMode" class="mode-btn" style="padding: 15px 30px; font-size: 1.1em; border: none; border-radius: 50px; cursor: pointer; background: #e0e0e0; color: #666; font-weight: 600; transition: all 0.3s ease;">
-                    📤 Upload Image
-                </button>
-            </div>
-            
-            <div class="upload-section" id="uploadSection" style="display: none;">
+            <div class="upload-section" id="uploadSection">
                 <h2 style="margin-bottom: 20px; color: #333;">📤 Upload Your Image</h2>
                 <p style="margin-bottom: 30px; color: #666;">Drag and drop or click to select</p>
                 <div class="file-input-wrapper">
                     <input type="file" id="imageInput" accept="image/*">
                     <label for="imageInput" class="file-input-label">Choose Image</label>
-                </div>
-            </div>
-            
-            <div class="camera-section" id="cameraSection">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <button id="startCamera" class="file-input-label" style="display: inline-block;">
-                        🎥 Start Camera
-                    </button>
-                    <button id="stopCamera" class="file-input-label" style="display: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
-                        ⏹️ Stop Camera
-                    </button>
-                </div>
-                <div id="cameraContainer" style="display: none; max-width: 800px; margin: 0 auto;">
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
-                        <div style="flex: 1; min-width: 300px;">
-                            <h3 style="margin-bottom: 15px; color: #333; text-align: center;">Live Feed</h3>
-                            <video id="cameraFeed" autoplay playsinline style="width: 100%; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);"></video>
-                        </div>
-                        <div style="flex: 1; min-width: 300px;">
-                            <h3 style="margin-bottom: 15px; color: #333; text-align: center;">Detection</h3>
-                            <canvas id="detectionCanvas" style="width: 100%; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);"></canvas>
-                        </div>
-                    </div>
-                    <div class="detections-info" id="liveDetections" style="margin-top: 20px;">
-                        <h3 style="margin-bottom: 15px; text-align: center;">Live Detection Results</h3>
-                        <div id="liveDetectionsList" style="text-align: center; color: #666;">
-                            Waiting for detections...
-                        </div>
-                    </div>
                 </div>
             </div>
             
@@ -266,11 +228,8 @@
         </div>
     </div>
     
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
-        const socket = io();
         const uploadSection = document.getElementById('uploadSection');
-        const cameraSection = document.getElementById('cameraSection');
         const imageInput = document.getElementById('imageInput');
         const loading = document.getElementById('loading');
         const previewSection = document.getElementById('previewSection');
@@ -278,137 +237,6 @@
         const detectedImage = document.getElementById('detectedImage');
         const detectionsList = document.getElementById('detectionsList');
         const errorDiv = document.getElementById('error');
-        const cameraModeBtn = document.getElementById('cameraMode');
-        const uploadModeBtn = document.getElementById('uploadMode');
-        const startCameraBtn = document.getElementById('startCamera');
-        const stopCameraBtn = document.getElementById('stopCamera');
-        const cameraFeed = document.getElementById('cameraFeed');
-        const detectionCanvas = document.getElementById('detectionCanvas');
-        const cameraContainer = document.getElementById('cameraContainer');
-        const liveDetectionsList = document.getElementById('liveDetectionsList');
-        
-        let stream = null;
-        let isProcessing = false;
-        let frameInterval = null;
-        
-        // Mode switching
-        cameraModeBtn.addEventListener('click', () => {
-            cameraModeBtn.classList.add('active');
-            cameraModeBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            cameraModeBtn.style.color = 'white';
-            uploadModeBtn.classList.remove('active');
-            uploadModeBtn.style.background = '#e0e0e0';
-            uploadModeBtn.style.color = '#666';
-            uploadSection.style.display = 'none';
-            cameraSection.style.display = 'block';
-            previewSection.classList.remove('active');
-        });
-        
-        uploadModeBtn.addEventListener('click', () => {
-            uploadModeBtn.classList.add('active');
-            uploadModeBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            uploadModeBtn.style.color = 'white';
-            cameraModeBtn.classList.remove('active');
-            cameraModeBtn.style.background = '#e0e0e0';
-            cameraModeBtn.style.color = '#666';
-            uploadSection.style.display = 'block';
-            cameraSection.style.display = 'none';
-            stopCamera();
-        });
-        
-        // Camera controls
-        startCameraBtn.addEventListener('click', startCamera);
-        stopCameraBtn.addEventListener('click', stopCamera);
-        
-        function startCamera() {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(videoStream => {
-                    stream = videoStream;
-                    cameraFeed.srcObject = stream;
-                    cameraFeed.play();
-                    cameraContainer.style.display = 'block';
-                    startCameraBtn.style.display = 'none';
-                    stopCameraBtn.style.display = 'inline-block';
-                    
-                    // Start sending frames
-                    frameInterval = setInterval(captureAndSendFrame, 100); // 10 FPS
-                })
-                .catch(err => {
-                    showError('Error accessing camera: ' + err.message);
-                });
-        }
-        
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            if (frameInterval) {
-                clearInterval(frameInterval);
-                frameInterval = null;
-            }
-            cameraFeed.srcObject = null;
-            cameraContainer.style.display = 'none';
-            startCameraBtn.style.display = 'inline-block';
-            stopCameraBtn.style.display = 'none';
-            isProcessing = false;
-        }
-        
-        function captureAndSendFrame() {
-            if (!isProcessing && cameraFeed.readyState === cameraFeed.HAVE_ENOUGH_DATA) {
-                isProcessing = true;
-                
-                // Capture frame from video
-                const canvas = document.createElement('canvas');
-                canvas.width = cameraFeed.videoWidth;
-                canvas.height = cameraFeed.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(cameraFeed, 0, 0, canvas.width, canvas.height);
-                
-                // Convert to base64
-                const imageData = canvas.toDataURL('image/jpeg', 0.7);
-                
-                // Send to server
-                socket.emit('frame', { image: imageData });
-            }
-        }
-        
-        // Socket event handlers
-        socket.on('detection_result', (data) => {
-            isProcessing = false;
-            
-            // Display annotated frame
-            const img = new Image();
-            img.onload = function() {
-                const ctx = detectionCanvas.getContext('2d');
-                detectionCanvas.width = img.width;
-                detectionCanvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-            };
-            img.src = data.image;
-            
-            // Display detection info
-            if (data.count > 0) {
-                liveDetectionsList.innerHTML = `
-                    <p style="font-size: 1.2em; font-weight: 600; color: #667eea;">
-                        ${data.count} object(s) detected
-                    </p>
-                `;
-            } else {
-                liveDetectionsList.innerHTML = `
-                    <p style="color: #666;">No objects detected</p>
-                `;
-            }
-        });
-        
-        socket.on('error', (data) => {
-            isProcessing = false;
-            showError(data.message);
-        });
-        
-        socket.on('camera_stopped', () => {
-            console.log('Camera stopped');
-        });
         
         // Drag and drop handlers
         uploadSection.addEventListener('dragover', (e) => {
@@ -512,4 +340,3 @@
     </script>
 </body>
 </html>
-

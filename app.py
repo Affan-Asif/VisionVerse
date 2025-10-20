@@ -1,16 +1,12 @@
 from flask import Flask, request, jsonify, render_template
-from flask_socketio import SocketIO, emit
 from ultralytics import YOLO
 import cv2
 import numpy as np
 from PIL import Image
 import io
 import base64
-import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Load YOLOv11 model
 model = YOLO("yolo11x.pt")
@@ -75,51 +71,6 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@socketio.on('frame')
-def handle_frame(data):
-    try:
-        # Decode base64 image
-        image_data = data['image'].split(',')[1]
-        image_bytes = base64.b64decode(image_data)
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        # Run detection
-        results = model(frame, verbose=False)
-        
-        # Create annotated frame
-        annotated_frame = results[0].plot()
-        
-        # Convert to base64
-        _, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        img_base64 = base64.b64encode(buffer).decode('utf-8')
-        
-        # Get detection info
-        detections = []
-        for result in results:
-            boxes = result.boxes
-            for box in boxes:
-                detection = {
-                    "class": int(box.cls[0]),
-                    "confidence": float(box.conf[0]),
-                    "bbox": box.xyxy[0].tolist()
-                }
-                detections.append(detection)
-        
-        # Send back annotated frame
-        emit('detection_result', {
-            'image': f"data:image/jpeg;base64,{img_base64}",
-            'detections': detections,
-            'count': len(detections)
-        })
-        
-    except Exception as e:
-        emit('error', {'message': str(e)})
-
-@socketio.on('stop_camera')
-def handle_stop():
-    emit('camera_stopped', {'status': 'success'})
-
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
 
