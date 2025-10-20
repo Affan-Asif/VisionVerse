@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: yolo-detection
+    runtime: docker
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    healthCheckPath: /health
+
