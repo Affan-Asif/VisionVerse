@@ -13,8 +13,18 @@ add_safe_globals([DetectionModel])
 app = Flask(__name__)
 
 # Load YOLOv11 model
-model = YOLO("yolo11n.pt")
-# MODEL_URL = "https://myserver.com/models/yolo11x.pt"  # change this!
+MODEL_PATH = "yolo11n.pt"
+
+# ✅ Automatically download if not present
+if not os.path.exists(MODEL_PATH):
+    from urllib.request import urlretrieve
+    print("Downloading YOLOv11n model...")
+    urlretrieve(
+        "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
+        MODEL_PATH
+    )
+
+model = YOLO(MODEL_PATH)# MODEL_URL = "https://myserver.com/models/yolo11x.pt"  # change this!
 
 @app.route('/')
 def index():
